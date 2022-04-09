@@ -1,0 +1,9 @@
+[Unit]
+Description=Network connectivity moniting
+
+[Service]
+Type=simple
+ExecStart=/path/to/network-mon
+
+[Install]
+WantedBy=multi-user.target

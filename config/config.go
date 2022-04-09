@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -39,6 +40,7 @@ func NewDefaultConfig() *AppConfig {
 		TestTarget: []string{
 			"1.1.1.1",
 			"8.8.8.8",
+			"8.8.4.4",
 		},
 		TestIntervalSecond:    300,
 		FailingIntervalSecond: 10,
@@ -88,6 +90,8 @@ func LoadOrCreateDefault() (*AppConfig, error) {
 		// Create new config file
 		c = NewDefaultConfig()
 		c.Save()
+		fmt.Println("A default config file was created. Please review and edit the config.\nExiting...")
+		os.Exit(1)
 	} else {
 		// Load config file
 		c, err = Load()
