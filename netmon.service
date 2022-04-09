@@ -1,5 +1,5 @@
 [Unit]
-Description=Network connectivity moniting
+Description=Network Connectivity Monitoring
 
 [Service]
 Type=simple

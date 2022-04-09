@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("Platform not supported: %s\n", runtime.GOOS)
 	}
 
-	log.Println("Moniting started")
+	log.Println("Monitoring started")
 	for {
 		if p.PingOnce(c.TestTarget[0]) {
 			// Ping success. Wait for next test cycle
@@ -73,7 +73,7 @@ func main() {
 							notifyResumeNormal(c.Notify.Url, c.Notify.MessagePayload, "[netmon] Network went out and resumed after reboot")
 						} else {
 							// Nothing we can do now :(
-							log.Println("Unable to resume network. We will keep moniting the network")
+							log.Println("Unable to resume network. We will keep monitoring the network")
 							resumed := false
 							for {
 								for i := 0; i < len(c.TestTarget); i++ {
