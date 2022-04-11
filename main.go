@@ -59,21 +59,32 @@ func main() {
 								// Resume normal
 								notifyResumeNormal(c.Notify.Url, c.Notify.MessagePayload, "[netmon] Network went out and resumed after network restart")
 								pingOk = true
+								conn.Close()
 								break
 							}
 						}
 					}
 					if !pingOk {
 						// Still not success. Reboot router
-						// Ignore any error from reboot command
-						conn.Execute(c.RouterRebootCommand)
-						log.Printf("Restart network doesn't work. Rebooting. Waiting %d seconds...", c.RebootMaxWaitTime)
-						if rapidPingTest(c.MaxFailAttempt, c.FailingIntervalSecond, c.TestTarget, p) {
-							// Resume normal
-							notifyResumeNormal(c.Notify.Url, c.Notify.MessagePayload, "[netmon] Network went out and resumed after reboot")
-						} else {
+						log.Printf("Restart network doesn't work")
+						resumed := false
+						for i := 0; i < c.RebootAttempt; i++ {
+							// Ignore any error from reboot command
+							conn.Execute(c.RouterRebootCommand)
+							log.Printf("Rebooting. Waiting %d seconds...", c.RebootMaxWaitTime)
+							time.Sleep(time.Duration(c.RebootMaxWaitTime) * time.Second)
+							if rapidPingTest(c.MaxFailAttempt, c.FailingIntervalSecond, c.TestTarget, p) {
+								// Resume normal
+								notifyResumeNormal(c.Notify.Url, c.Notify.MessagePayload, "[netmon] Network went out and resumed after reboot")
+								conn.Close()
+								resumed = true
+								break
+							}
+						}
+						if !resumed {
 							// Nothing we can do now :(
 							log.Println("Unable to resume network. We will keep monitoring the network")
+							conn.Close()
 							resumed := false
 							for {
 								for i := 0; i < len(c.TestTarget); i++ {

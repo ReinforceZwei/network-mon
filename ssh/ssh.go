@@ -28,3 +28,7 @@ func (c *SshConnection) Execute(command string) error {
 	defer s.Close()
 	return s.Run(command)
 }
+
+func (c *SshConnection) Close() error {
+	return c.client.Close()
+}
