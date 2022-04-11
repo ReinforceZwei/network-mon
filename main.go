@@ -21,7 +21,7 @@ func main() {
 	log.Println("Loaded config file from default location")
 
 	var p pingwrap.PingWrap
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		p = pingwrap.PingLinux{}
 	} else if runtime.GOOS == "windows" {
 		p = pingwrap.PingWindows{}
