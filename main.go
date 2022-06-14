@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/ReinforceZwei/network-mon/config"
@@ -20,6 +22,8 @@ func main() {
 	}
 	log.Println("Loaded config file from default location")
 
+	handleTestArgs(os.Args[1:], c)
+
 	var p pingwrap.PingWrap
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		p = pingwrap.PingLinux{}
@@ -33,7 +37,6 @@ func main() {
 	for {
 		if p.PingOnce(c.TestTarget[0]) {
 			// Ping success. Wait for next test cycle
-			log.Printf("ping %s success\n", c.TestTarget[0])
 		} else {
 			// Ping fail. Retry other test target
 			log.Printf("ping %s failed. Enter rapid ping mode...\n", c.TestTarget[0])
@@ -104,7 +107,7 @@ func main() {
 				}
 			}
 		}
-		log.Printf("Sleeping for %d seconds\n", c.TestIntervalSecond)
+		//log.Printf("Sleeping for %d seconds\n", c.TestIntervalSecond)
 		time.Sleep(time.Duration(c.TestIntervalSecond) * time.Second)
 	}
 }
@@ -124,16 +127,95 @@ func rapidPingTest(round, interval int, targets []string, p pingwrap.PingWrap) b
 
 func notifyResumeNormal(webhookUrl, payload, message string) {
 	if webhookUrl != "" && payload != "" && message != "" {
-		client := http.Client{
-			Timeout: 15 * time.Second,
-		}
 		payload = fmt.Sprintf(payload, message)
-		resp, err := client.Post(webhookUrl, "application/json", bytes.NewBuffer([]byte(payload)))
+		err := httpPost(webhookUrl, "application/json", payload)
 		if err != nil {
 			log.Println("notifyResumeNormal: http request error: " + err.Error())
 		} else {
 			log.Println("notifyResumeNormal: message sent")
-			defer resp.Body.Close()
+		}
+	}
+}
+
+func httpPost(url, contentType, body string) error {
+	client := http.Client{
+		Timeout: 15 * time.Second,
+	}
+	resp, err := client.Post(url, contentType, bytes.NewBuffer([]byte(body)))
+	if err != nil {
+		return err
+	} else {
+		defer resp.Body.Close()
+		return nil
+	}
+}
+
+func handleTestArgs(args []string, c *config.AppConfig) {
+	if len(args) > 0 {
+		if strings.ToLower(args[0]) == "test" {
+			if len(args) > 1 {
+				switch strings.ToLower(args[1]) {
+				case "webhook":
+					testWebhook(c)
+
+				case "ping":
+					testPing(c)
+
+				case "ssh":
+					testSsh(c)
+
+				case "all":
+					testWebhook(c)
+					testPing(c)
+					testSsh(c)
+
+				default:
+					log.Println("Unknown test function")
+				}
+			} else {
+				log.Println("Test function. Available function: webhook, ping, ssh, all")
+			}
+			os.Exit(0)
+		}
+	}
+}
+
+func testWebhook(c *config.AppConfig) {
+	payload := fmt.Sprintf(c.Notify.MessagePayload, "[netmon] Test message")
+	err := httpPost(c.Notify.Url, "application/json", payload)
+	if err != nil {
+		log.Println("webhook test: http request error: " + err.Error())
+	} else {
+		log.Println("webhook test: ok")
+	}
+}
+
+func testSsh(c *config.AppConfig) {
+	conn, err := ssh.Connect(c.Router+":"+"22", c.SshUser, c.SshPassword)
+	if err == nil {
+		err = conn.Execute("pwd")
+		if err == nil {
+			log.Println("ssh test: ok")
+			return
+		}
+	}
+	log.Println("ssh test: error: " + err.Error())
+}
+
+func testPing(c *config.AppConfig) {
+	var p pingwrap.PingWrap
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		p = pingwrap.PingLinux{}
+	} else if runtime.GOOS == "windows" {
+		p = pingwrap.PingWindows{}
+	} else {
+		log.Fatalf("Platform not supported: %s\n", runtime.GOOS)
+	}
+	for _, ip := range c.TestTarget {
+		if p.PingOnce(ip) {
+			log.Printf("ping test: %s ok\n", ip)
+		} else {
+			log.Printf("ping test: %s failed\n", ip)
 		}
 	}
 }
